@@ -1,6 +1,5 @@
 .DS_Store
 /app/settings.php
-/app/vendor
 /content/images/users
 /content/images/system/*
 !/content/images/system/default

@@ -120,6 +120,14 @@ if (is_maintenance() || is_show_consent_screen() || in_array($templateUsed, ['re
                             </li>
                         <?php
                                 } ?>
+                        <?php if (is_content_manager()) { ?>
+                        <li id="top-bar-moderate" data-nav="moderate" class="top-btn-el<?php if (in_array(G\get_route_name(), ['moderate'])) {
+                                    ?> current<?php
+                                } ?>"">
+                            <a href="<?php echo G\get_base_url('moderate'); ?>"><span class="top-btn-text"><span class="icon icon-download2"></span><span class="btn-text phone-hide phablet-hide"><?php _se('Moderate'); ?></span></span></a>
+                        </li>
+                        <?php } ?>
+
                         <?php if (is_search_enabled()) {
                                     ?>
                             <li data-action="top-bar-search" data-nav="search" class="phone-hide pop-btn">
@@ -309,6 +317,33 @@ if (is_maintenance() || is_show_consent_screen() || in_array($templateUsed, ['re
             </li>
         <?php
                                 } ?>
+        <?php
+                if (!CHV\Login::isLoggedUser() and CHV\getSetting('language_chooser_enable')) {
+                    ?>
+            <li data-nav="language" class="phablet-hide phone-hide pop-btn">
+                <?php
+                            // Language selector
+                            $langLinks = G\Handler::getVar('langLinks');
+                    $cols = min(5, ceil(count($langLinks) / 6)); ?>
+                <span class="top-btn-text"><span class="text"><?php echo CHV\get_language_used()['short_name']; ?></span><span class="arrow-down"></span></span>
+                <div class="pop-box <?php if ($cols > 1) {
+                        echo sprintf('pbcols%d ', $cols);
+                    } ?>arrow-box arrow-box-top anchor-center">
+                    <div class="pop-box-inner pop-box-menu<?php if ($cols > 1) {
+                        ?> pop-box-menucols<?php
+                    } ?>">
+                        <ul>
+                            <?php
+                                        foreach ($langLinks as $k => $v) {
+                                            echo '<li' . (CHV\get_language_used()['code'] == $k ? ' class="current"' : '') . '><a href="' . $v['url'] . '">' . $v['name'] . '</a></li>' . "\n";
+                                            ++$count;
+                                        } ?>
+                        </ul>
+                    </div>
+                </div>
+            </li>
+        <?php
+                } ?>
     <?php
                         } ?>
 

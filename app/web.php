@@ -49,10 +49,10 @@ if (
         || G\datetime_add(Settings::get('update_check_datetimegmt'), 'P1D') < G\datetimegmt()
 ) {
         try {
+            L10n::setLocale(Settings::get('default_language'));
             $lock = new Lock('check-updates');
             if ($lock->create()) {
                 checkUpdates();
-                updateCheveretoNews();
                 $lock->destroy();
             }
         } catch (Exception $e) {
@@ -161,6 +161,38 @@ try {
                     G\exception_to_error($e);
                 }
             }
+            if (Login::isLoggedUser()) {
+                new L10n;
+            }
+            // Global handle ?lang= to have hreflang all across ALL urls
+            if (isset($_GET['lang']) && array_key_exists($_GET['lang'], get_enabled_languages())) {
+                if (Login::isLoggedUser() and Login::getUser()['language'] !== $_GET['lang']) {
+                    User::update(Login::getUser()['id'], ['language' => $_GET['lang']]);
+                }
+                // Store selected language in cookie
+                L10n::setCookieLang($_GET['lang']);
+                define('PUSH_LANG', $_GET['lang']);
+            }
+
+            // Lang subdomain wildcard applies only for homepage
+            if (defined('CHV_HOST_WILDCARD_TYPE') && CHV_HOST_WILDCARD_TYPE == 'lang' && $handler->handled_request != '/') {
+                $handler->issue404();
+            }
+
+            if (defined('CHV_HOST_WILDCARD') && defined('CHV_HOST_WILDCARD_TYPE') == false) {
+                G\redirect(G\get_base_url());
+            }
+
+            if (defined('CHV_HOST_WILDCARD_USER_ID') && $handler->request_array[0] !== 'json') {
+                if ($handler->request_array[0] == '/') {
+                    $handler->request_array[0] = CHV_HOST_WILDCARD;
+                } else {
+                    array_unshift($handler->request_array, CHV_HOST_WILDCARD);
+                }
+                $handler->mapRoute('user', [
+                    'id' => CHV_HOST_WILDCARD_USER_ID,
+                ]);
+            }
 
             // Handle agree consent stuff
             if (array_key_exists('agree-consent', $_GET)) {
@@ -209,6 +241,27 @@ try {
                 G\redirect('login');
             }
 
+            $langLinks = [];
+            $langToggleUrl = defined('CHV_HOST_WILDCARD_USER_ID') ? get_current_url_wildcard(CHV_HOST_WILDCARD, ['lang']) : G\get_current_url(true, ['lang']);
+            parse_str($_SERVER['QUERY_STRING'], $qs);
+            unset($qs['lang']);
+            $qs = http_build_query($qs);
+            $langToggleUrl = rtrim($langToggleUrl, '/') . ($qs ? '&' : '/?') . 'lang=';
+            foreach (get_enabled_languages() as $k => $v) {
+                $hreflang = strtolower($k);
+                if ($handler->request_array[0] == '/' && getSetting('lang_subdomain_wildcard')) {
+                    $langUrl = get_base_url_wildcard(null, $hreflang);
+                } else {
+                    $langUrl = $langToggleUrl . $k;
+                }
+                $langLinks[$k] = [
+                    'hreflang' => $hreflang,
+                    'name' => $v['name'],
+                    'url' => $langUrl,
+                ];
+            }
+            $handler::setVar('langLinks', $langLinks);
+
             // Consent screen "accept" URL
             if ($handler::getCond('show_consent_screen')) {
                 $handler::setVar('consent_accept_url', G\get_current_url() . (parse_url(G\get_current_url(), PHP_URL_QUERY) ? '&' : '/?') . 'agree-consent');
@@ -230,7 +283,8 @@ try {
                     //Settings::setValue('website_search', FALSE);
                 }
 
-                if ($handler->request_array[0] == '/' and getSetting('website_mode_personal_routing') == '/' and in_array(key($querystr), ['random'])) {
+                // Keep ?random & ?lang when route is /
+                if ($handler->request_array[0] == '/' and getSetting('website_mode_personal_routing') == '/' and in_array(key($querystr), ['random', 'lang'])) {
                     $handler->mapRoute('index');
                 // Keep /search/something (global search) when route is /
                 } elseif ($handler->request_array[0] == 'search' and in_array($handler->request_array[1], ['images', 'albums', 'users'])) {
@@ -243,7 +297,7 @@ try {
                 }
 
                 // Inject some stuff for the index page
-                if ($handler->request_array[0] == '/' and !in_array(key($querystr), ['random']) and !$handler::getCond('mapped_route')) {
+                if ($handler->request_array[0] == '/' and !in_array(key($querystr), ['random', 'lang']) and !$handler::getCond('mapped_route')) {
                     $personal_mode_user = User::getSingle(getSetting('website_mode_personal_uid'));
                     if (Settings::get('homepage_title_html') == null) {
                         Settings::setValue('homepage_title_html', $personal_mode_user['name']);
@@ -325,6 +379,17 @@ try {
             $handler::setCond('explore_enabled', $handler::getCond('content_manager') ?: (getSetting('website_explore_page') ? (Login::getUser() ?: getSetting('website_explore_page_guest')) : false));
 
             $handler::setCond('search_enabled', $handler::getCond('content_manager') ?: getSetting('website_search'));
+
+            $moderate_uploads = false;
+            switch (getSetting('moderate_uploads')) {
+                case 'all':
+                    $moderate_uploads = true;
+                break;
+                case 'guest':
+                    $moderate_uploads = !Login::isLoggedUser();
+                break;
+            }
+            $handler::setCond('moderate_uploads', $moderate_uploads);
 
             $categories = [];
             if ($handler::getCond('explore_enabled') || $base == 'dashboard') {
@@ -483,6 +548,10 @@ try {
             if (isset($list_params) && $list_params['page_show']) {
                 $handler::setVar('doctitle', $handler::getVar('doctitle') . ' | ' . _s('Page %s', $list_params['page_show']));
             }
+            if (defined('PUSH_LANG')) {
+                $handler::setVar('doctitle', $handler::getVar('doctitle') . ' (' . get_enabled_languages()[PUSH_LANG]['name'] . ')');
+            }
+
             $handler::setVar('safe_html_website_name', G\safe_html(getSetting('website_name')));
             $handler::setVar('safe_html_doctitle', G\safe_html($handler::getVar('doctitle')));
             if ($handler::getVar('pre_doctitle')) {

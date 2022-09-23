@@ -144,7 +144,11 @@ class User
         if (is_array($handle) and getSetting('website_mode') == 'personal' and $id == getSetting('website_mode_personal_uid')) {
             $url = getSetting('website_mode_personal_routing') !== '/' ? getSetting('website_mode_personal_routing') : null;
         }
-        return G\get_base_url($url);
+        if (getSetting('user_subdomain_wildcard')) {
+            return get_base_url_wildcard(null, $username);
+        } else {
+            return G\get_base_url($url);
+        }
     }
 
     public static function getUrlAlbums($user_url)
@@ -161,6 +165,7 @@ class User
             if (!is_array($values)) {
                 throw new DBException('Expecting array values, ' . gettype($values) . ' given in ' . __METHOD__, 100);
             }
+            // TODO: Role handler (for importer)
             if (!$values['date']) {
                 $values['date'] = G\datetime();
             }

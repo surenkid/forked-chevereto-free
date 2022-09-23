@@ -17,7 +17,6 @@ namespace CHV;
 use G;
 use DirectoryIterator;
 use Exception;
-use Throwable;
 
 if (!defined('access') or !access) {
     die('This file cannot be directly accessed.');
@@ -367,35 +366,31 @@ if (!function_exists('bcdiv')) {
  */
 function get_translation_table()
 {
-    return [];
+    return L10n::getTranslation();
 }
 
 function get_language_used()
 {
-    return 'en';
+    return get_available_languages()[L10n::getStatic('locale')];
 }
 
 function get_available_languages()
 {
-    return [];
+    return L10n::getAvailableLanguages();
 }
 
 function get_enabled_languages()
 {
-    return [
-        'en' => [
-            'code' => 'en',
-            'dir' => 'ltr',
-            'name' => 'English',
-            'base' => 'en',
-            'short_name' => 'EN',
-          ],
-    ];
+    if (!getSetting('language_chooser_enable')) {
+        return [];
+    }
+
+    return L10n::getEnabledLanguages();
 }
 
 function get_disabled_languages()
 {
-    return [];
+    return L10n::getDisabledLanguages();
 }
 
 /**
@@ -818,15 +813,22 @@ function checkUpdates()
     } // Silence
 }
 
-function updateCheveretoNews() {
-    try {
-        $chevereto_news = G\fetch_url('https://blog.chevereto.com/feed.json');
-        $chevereto_news = json_decode($chevereto_news)->items;
-        Settings::update(['chevereto_news' => serialize($chevereto_news)]);
-    } catch(Throwable $e) {
-        $chevereto_news = [];
+function getJsModLangL10n()
+{
+    foreach (new DirectoryIterator(CHV_APP_PATH_CONTENT_LANGUAGES . 'cache/') as $fileInfo) {
+        if ($fileInfo->isDot() || $fileInfo->isDir()) {
+            continue;
+        }
+        $lang_code = str_replace('.po.cache.php', null, $fileInfo->getFilename());
+        include $fileInfo->getPathname();
+        if (!$translation_table['Upload images']) {
+            continue;
+        }
+        $l10n[$lang_code] = $translation_table['Upload images'][0];
     }
-    return $chevereto_news;
+    unset($translation_table);
+
+    return json_encode($l10n);
 }
 
 function obfuscate($string)

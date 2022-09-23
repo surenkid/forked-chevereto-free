@@ -39,7 +39,7 @@ function get_docs_link($key, $subject)
 					<p><?php _se("Make sure that you address this issue as the system relies on accurate IP detections to provide basic functionalities and to protect against spam, flooding, and brute force attacks."); ?></p>
 				</div>
 				<div class="dashboard-group">
-					<div class="overflow-auto text-align-center margin-top-20 margin-bottom-40">
+					<div class="overflow-auto text-align-center margin-top-20">
 						<a href="<?php echo G\get_base_url('dashboard/images'); ?>" class="stats-block c6 fluid-column display-inline-block" <?php if (get_totals()['images'] > 999999) {
                                 echo ' rel="tooltip" data-tipTip="top" title="' . number_format(get_totals()['images']) . '"';
                             } ?>>
@@ -72,33 +72,6 @@ function get_docs_link($key, $subject)
 						</div>
 					</div>
 
-                    <div class="header header-tabs no-select">
-                        <h2><i class="icon icon-rss"></i> <?php _se('%s News', 'Chevereto'); ?></h2>
-                    </div>
-
-                    <div class="card-wrapper margin-bottom-40">
-                        <div class="card-slider">
-                            <?php foreach(array_slice(get_chevereto_news(), 0, 8) as $k => $v) {
-                                echo strtr('<article class="card-container">
-                                <div class="card">
-                                    <a class="card-header-image" href="%url%" target="_blank" style="background-image: url(%image%);">
-                                        <span class="animate card-header-image-mask"></span>  
-                                        <span class="card-text">
-                                            <h3>%title%</h3>
-                                            <span>%summary%</span>
-                                        </span>
-                                    </a>
-                                </div>
-                            </article>' . "\n", [
-                                    '%url%' => $v->url,
-                                    '%image%' => $v->image,
-                                    '%title%' => $v->title,
-                                    '%summary%' => $v->summary,
-                                ]);
-                            } ?>
-                        </div>
-                    </div>
-
 					<ul class="tabbed-content-list table-li margin-top-20">
                         <li>
                             <span class="c6 display-table-cell padding-right-10">GitHub<span style="opacity: 0;">:</span></span>
@@ -106,6 +79,12 @@ function get_docs_link($key, $subject)
                                 <a class="github-button" href="https://github.com/rodber/chevereto-free/subscription" data-icon="octicon-eye" data-size="large" data-show-count="true" aria-label="Watch rodber/chevereto-free on GitHub">Watch</a>
                                 <a class="github-button" href="https://github.com/rodber/chevereto-free" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star rodber/chevereto-free on GitHub">Star</a>
                             </span>
+                            <div class="highlight padding-5 margin-top-10 margin-bottom-10">Chevereto-Free project ownership will be <b>transferred</b> to <a href="https://github.com/rodber" target="_blank">rodber</a> on <b>2021-10</b>.
+                                <ul class="list-style-type-disc padding-left-20">
+                                    <li>The Chevereto organization won't be longer involved with the development of this project.</li>
+                                    <li>The project repository will be available at <a href="https://github.com/rodber/chevereto-free" target="_blank">rodber/chevereto-free</a>.</li>
+                                </ul>
+                            </div>
                         </li>
 						<?php
                         foreach (get_system_values() as $v) {
@@ -124,6 +103,352 @@ function get_docs_link($key, $subject)
         </div>
 
         <?php
+                break;
+            case 'bulk':
+            ?>
+				<div class="header header--centering default-margin-bottom">
+					<h1><?php _se('Bulk importer'); ?></h1>
+                </div>
+                <div class="text-content">
+                    <p><?php _se('This tool allows to mass add content to your website by pointing a system path with the content you want to import. It supports the addition of users, albums, and images using a folder based structure.'); ?> <?php _se('Check the %s for more information about this feature.', get_docs_link('features/bulk-content-importer.html', _s('documentation'))); ?></p>
+                </div>
+                <div class ="text-content margin-bottom-20">
+                <h3>🤖 <?php _se('Automatic importing'); ?></h3>
+                    <p><?php _se('The system automatically parses any content by a continuous observation of the %path% path.', ['%path%' => '<b>' . G_ROOT_PATH . 'importing</b>']); ?> <?php _se('Completed jobs will be automatically re-started after %n %m.', [
+                        '%n' => '1',
+                        '%m' => _n('minute', 'minutes', '1')
+                    ]); ?> <?php _se('Reset to clear stats and logs.'); ?></p>
+                </div>
+                <div data-content="dashboard-imports" class="margin-top-0 margin-bottom-20">
+                <?php
+                $statusesDisplay = [
+                    'queued' => _s('Queued'),
+                    'working' => _s('Working'),
+                    'paused' => _s('Paused'),
+                    'canceled' => _s('Canceled'),
+                    'completed' => _s('Completed'),
+                ];
+                if ($continuous = CHV\Import::getContinuous()) {
+                    foreach ($continuous as $v) {
+                        $boxTpl = '<div class="importing phone-c1 phablet-c1 c8 fluid-column display-inline-block" data-status="%status%" data-id="%id%" data-object="%object%" data-errors="%errors%" data-started="%started%">
+                        <h3 class="margin-bottom-5">Path <b title="%path%">%pathRelative%</b></h3>
+                        <span data-content="log-errors" class="icon icon-warning color-red position-absolute top-10 right-10"></span>
+                        <div data-content="pop-selection" class="pop-btn">
+                        <span class="pop-btn-text">' . _s('Actions') . '<span class="arrow-down"></span></span>
+                            <div class="pop-box arrow-box arrow-box-top anchor-left">
+                                <div class="pop-box-inner pop-box-menu">
+                                    <ul>
+                                        <li data-action="reset"><a>' . _s('Reset') . '</a></li>
+                                        <li data-action="pause"><a>' . _s('Pause') . '</a></li>
+                                        <li data-action="resume"><a>' . _s('Resume') . '</a></li>
+                                        <li data-content="log-process"><a href="' . G\get_base_url('importer-jobs/%id%/process') . '" target="_blank">' . _s('Process log') . '</a></li>
+                                        <li data-content="log-errors"><a href="' . G\get_base_url('importer-jobs/%id%/errors') . '" target="_blank"><span class="icon icon-warning color-red"></span> ' . _s('Errors') . '</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="importing-stats">
+                            <span class="figure"><span data-content="images">%images%</span> images</span>
+                            <span class="figure"><span data-content="albums">%albums%</span> albums</span>
+                            <span class="figure"><span data-content="users">%users%</span> users</span>
+                        </div>
+                        <div class="importing-status">' . _s('Status') . ': <span data-content="status">%displayStatus%</span></div>
+                        <div class="importing-status">@<span data-content="dateTime">%dateTime%</span> UTC</div>
+                        <div class="loading-container position-absolute right-10 bottom-10"><div class="loading"></div></div>
+                        </div>';
+                        echo strtr($boxTpl, [
+                            '%id%' => $v['id'],
+                            '%dateTime%' => $v['time_updated'],
+                            '%object%' => htmlspecialchars(json_encode($v), ENT_QUOTES, 'UTF-8'),
+                            '%status%' => $v['status'],
+                            '%parse%' => $v['options']['root'],
+                            '%shortParse%' => $v['options']['root'][0],
+                            '%displayStatus%' => $statusesDisplay[$v['status']],
+                            '%path%' => $v['path'],
+                            '%pathRelative%' => '.' . G\absolute_to_relative($v['path']),
+                            '%users%' => $v['users'] ?: 0,
+                            '%images%' => $v['images'] ?: 0,
+                            '%albums%' => $v['albums'] ?: 0,
+                            '%errors%' => $v['errors'] ?: 0,
+                            '%started%' => $v['started'] ?: 0,
+                        ]);
+                    }
+                } ?>
+                </div>
+                <div class="margin-bottom-40">
+                    <div class="margin-bottom-10"><?php _se('The system works with a scheduled command to continuously process the importing. It requires a crontab entry.'); ?></div>
+                    <div class="margin-bottom-10">
+                        <code class="code">* * * * * IS_CRON=1 THREAD_ID=1 /usr/bin/php <?php echo G_ROOT_PATH . 'importing.php'; ?> >/dev/null 2>&1</code>
+                    </div>
+                    <div class="margin-bottom-10"><?php _se('You can run the command in parallel by changing the integer value of %s%.', ['%s%' => '<code>THREAD_ID</code>']); ?></div>
+                    <div class="margin-bottom-10">
+                        <span class="highlight padding-5 display-inline-block">⚠ <?php _se('All file-system permissions must be granted for the crontab user at %path%', ['%path%' => G_ROOT_PATH . 'importing']);  ?></span>
+                    </div>
+                </div>
+            </div>
+
+				<div data-modal="modal-add-import" class="hidden" data-submit-fn="CHV.fn.import.add.submit" data-ajax-deferred="CHV.fn.import.add.deferred">
+					<span class="modal-box-title"><?php _se('Add import job'); ?></span>
+					<div class="modal-form">
+						<?php G\Render\include_theme_file('snippets/form_import_add'); ?>
+					</div>
+				</div>
+				<div data-modal="modal-process-import" data-prompt="skip" class="hidden" data-load-fn="CHV.fn.import.process.load" data-submit-fn="CHV.fn.import.process.submit" data-ajax-deferred="CHV.fn.import.process.deferred">
+					<span class="modal-box-title"><?php _se('Process import'); ?></span>
+					<div class="modal-form">
+						<?php G\Render\include_theme_file('snippets/form_import_process'); ?>
+					</div>
+				</div>
+				<?php
+                if ($imports = CHV\Import::getOneTime()) {
+                    foreach ($imports as $k => &$v) {
+                        if ($v['status'] != 'working') {
+                            continue;
+                        }
+                        $then = strtotime($v['time_updated']);
+                        $now = strtotime(G\datetimegmt());
+                        if ($now > ($then + 300)) { // 5 min
+                            $v['status'] = 'paused';
+                            CHV\DB::update('imports', ['status' => 'paused'], ['id' => $v['id']]);
+                        }
+                    }
+                    $imports = array_reverse($imports);
+                }
+                $rowTpl = '<li data-status="%status%" data-id="%id%" data-object="%object%" data-errors="%errors%" data-started="%started%">
+			<span class="fluid-column c2 col-2-max display-table-cell padding-right-10">%id%</span>
+			<span class="fluid-column c2 col-2-max display-table-cell padding-right-10 text-transform-uppercase" title="' . _s('Top level folders as %s', '%parse%') . '">%shortParse%</span>
+			<span class="fluid-column c3 col-3-max display-table-cell padding-right-10">
+				<span class="icon icon-warning2 color-red" data-result="error"></span>
+				<span class="icon icon-checkmark-circle color-green" data-result="success"></span>
+				<span class="status-text">%displayStatus%</span>
+			</span>
+			<span class="fluid-column c7 col-7-max col-7-min display-table-cell padding-right-10 text-overflow-ellipsis phone-display-block" title="%path%">%path%</span>
+			<span class="fluid-column c2 display-table-cell padding-right-10"><span>%users%</span><span class="table-li--mobile-display"> ' . _s('Users') . '</span></span>
+			<span class="fluid-column c2 display-table-cell padding-right-10"><span>%albums%</span><span class="table-li--mobile-display"> ' . _s('Albums') . '</span></span>
+			<span class="fluid-column c3 display-table-cell padding-right-10"><span>%images%</span><span class="table-li--mobile-display"> ' . _s('Images') . '</span></span>
+			<div class="fluid-column c3 display-table-cell margin-bottom-0 phone-display-block">
+				<div class="loading"></div>
+				<div data-content="pop-selection" class="pop-btn">
+					<span class="pop-btn-text">' . _s('Actions') . '<span class="arrow-down"></span></span>
+					<div class="pop-box arrow-box arrow-box-top anchor-left">
+						<div class="pop-box-inner pop-box-menu">
+							<ul>
+								<li data-args="%id%" data-modal="form" data-target="modal-process-import"><a>' . _s('Process') . '</a></li>
+								<li data-action="pause"><a>' . _s('Pause') . '</a></li>
+								<li data-action="cancel"><a>' . _s('Cancel') . '</a></li>
+								<li data-content="log-process"><a href="' . G\get_base_url('importer-jobs/%id%/process') . '" target="_blank">' . _s('Process log') . '</a></li>
+								<li data-content="log-errors"><a href="' . G\get_base_url('importer-jobs/%id%/errors') . '" target="_blank">' . _s('Errors') . '</a></li>
+								<li data-args="%id%" data-confirm="' . _s('Do you really want to remove the import ID %s?', '%id%') . '" data-submit-fn="CHV.fn.import.delete.submit" data-ajax-deferred="CHV.fn.import.delete.deferred"><a>' . _s('Delete') . '</a></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+        </li>';
+                $manualImportingClass = is_array($imports) == false ? ' hidden' : '';
+                ?>
+                <div class="text-content">
+                    <h3>⚙ <?php _se('Manual importing'); ?></h3>
+                    <p><?php _se('The system will parse the contents of any available filesystem path.'); ?> <?php _se('These processes must be manually created and handled with the web browser tab open.'); ?> <a data-modal="form" data-target="modal-add-import"><?php _se('Add import job'); ?></a></p>
+                </div>
+                
+				<ul data-content="dashboard-imports" class="tabbed-content-list table-li-hover table-li margin-top-20 margin-bottom-20<?php echo $manualImportingClass; ?>">
+					<li class="table-li-header phone-hide">
+						<span class="fluid-column c2 display-table-cell">ID</span>
+						<span class="fluid-column c2 display-table-cell"><?php _se('Parser'); ?></span>
+						<span class="fluid-column c3 display-table-cell"><?php _se('Status'); ?></span>
+						<span class="fluid-column c7 col-7-max col-7-min display-table-cell"><?php _se('Path'); ?></span>
+						<span class="fluid-column c2 display-table-cell"><?php _se('Users'); ?></span>
+						<span class="fluid-column c2 display-table-cell"><?php _se('Albums'); ?></span>
+						<span class="fluid-column c3 display-table-cell"><?php _se('Images'); ?></span>
+						<span class="fluid-column c3 display-table-cell">&nbsp;</span>
+					</li>
+					<?php
+                    if (is_array($imports)) {
+                        foreach ($imports as $k => $v) {
+                            echo strtr($rowTpl, [
+                                '%id%' => $v['id'],
+                                '%object%' => htmlspecialchars(json_encode($v), ENT_QUOTES, 'UTF-8'),
+                                '%status%' => $v['status'],
+                                '%parse%' => $v['options']['root'],
+                                '%shortParse%' => $v['options']['root'][0],
+                                '%displayStatus%' => $statusesDisplay[$v['status']],
+                                '%path%' => $v['path'],
+                                '%users%' => $v['users'] ?: 0,
+                                '%images%' => $v['images'] ?: 0,
+                                '%albums%' => $v['albums'] ?: 0,
+                                '%errors%' => $v['errors'] ?: 0,
+                                '%started%' => $v['started'] ?: 0,
+                            ]);
+                        }
+                    }
+                    ?>
+				</ul>
+				<script>
+					$(document).ready(function() {
+						CHV.obj.import = {
+							working: {
+								// importId: {
+								// 	threads: {threadId: xhr},
+								// 	interval: interval,
+								// 	stats: xhr
+								// }
+							},
+							aborted: [],
+							boxTpl: <?php echo json_encode($boxTpl); ?>,
+							rowTpl: <?php echo json_encode($rowTpl); ?>,
+							importTr: {
+								'id': null,
+								// 'object' : null,
+								'status': null,
+								'parse': null,
+								'shortParse': null,
+								'displayStatus': null,
+								'path': null,
+								'users': null,
+								'images': null,
+								'albums': null,
+								'errors': null,
+								'started': null,
+							},
+							sel: {
+								root: "[data-content=dashboard-imports]",
+								header: ".table-li-header"
+							},
+							statusesDisplay: <?php echo json_encode($statusesDisplay); ?>
+                        };
+                        var updateContinuous = function( object) {
+                            var $sel = $("[data-id=" + object.id + "]", CHV.obj.import.sel.root);
+                            $sel.attr({
+                                "data-status": object.status,
+                                "data-object": JSON.stringify(object),
+                                "data-errors": object.errors,
+                                "data-started": object.started,
+                            });
+                            $("[data-content=images]", $sel).text(object.images);
+                            $("[data-content=dateTime]", $sel).text(object.time_updated);
+                            $("[data-content=users]", $sel).text(object.users);
+                            $("[data-content=albums]", $sel).text(object.albums);
+                            $("[data-content=status]", $sel).text(CHV.obj.import.statusesDisplay[object.status]);
+                        };
+                        $('.importing', '[data-content=dashboard-imports]').each(function(i, v) {
+                            var id = $(this).data("id");
+                            var $this = $(this);
+                            CHV.obj.import.working[id] = {
+                                threads: {},
+                                interval: setInterval(function() {
+                                    var $loading = $this.find(".loading");
+                                    if($loading.html() !== "") {
+                                        $loading.removeClass("hidden");
+                                    } else {
+                                        PF.fn.loading.inline($loading, {
+                                            size: "small"
+                                        });
+                                    }
+                                    CHV.obj.import.working[id].stats = $.ajax({
+                                        type: "POST",
+                                        data: {
+                                            action: "importStats",
+                                            id: id
+                                        }
+                                    });
+                                    CHV.obj.import.working[id].stats.complete(function (XHR) {
+                                        var response = XHR.responseJSON;
+                                        if (response) {
+                                            updateContinuous(response.import);
+                                        }
+                                        $loading.addClass("hidden");
+                                    });
+                                }, 10000),
+                                stats: {}
+                            };
+                            
+                        });
+                        $(document).on("click", CHV.obj.import.sel.root + " [data-action]", function() {
+                            var $el = $(this).closest("[data-object]");
+                            var $loading = $el.find(".loading");
+                            var $actions = $el.find("[data-content=pop-selection]");
+                            var localData = $el.data("object");
+                            var backupData = $.extend({}, localData);
+                            var action = $(this).data("action");
+                            var data = {};
+                            if (localData.id) {
+                                data.id = localData.id;
+                            }
+                            if($el.is("li")) {
+                                CHV.fn.import.process.abortAll(data.id);
+                            }
+                            switch (action) {
+                                case "resume":
+                                    data.action = "importResume";
+                                    localData.status = "working";
+                                    break;
+                                case "reset":
+                                    data.action = "importReset";
+                                    localData.status = "working";
+                                    break;
+                                case "pause":
+                                    data.action = "importEdit";
+                                    localData.status = "paused";
+                                    data.values = {
+                                        status: localData.status
+                                    };
+                                    break;
+                                case "cancel":
+                                    localData.status = "canceled";
+                                    data.action = "importEdit";
+                                    data.values = {
+                                        status: localData.status
+                                    };
+                                    break;
+                                case "process":
+                                    localData.status = "working";
+                                    data.action = "importEdit";
+                                    data.values = {
+                                        status: localData.status
+                                    };
+                                    break;
+                                default:
+                                    alert('null');
+                                    return;
+                                    break;
+                            }
+                            if($loading.html() !== "") {
+                                $loading.removeClass("hidden");
+                            } else {
+                                PF.fn.loading.inline($loading, {
+                                    size: "small"
+                                });
+                            }
+                            $actions.addClass("pointer-events-none");
+                            $.ajax({
+                                type: "POST",
+                                data: data
+                            }).complete(function(XHR) {
+                                var response = XHR.responseJSON;
+                                if (XHR.status == 200) {
+                                    var dataset = response.import;
+                                    if($el.is("li")) {
+                                        var $html = CHV.fn.import.parseTemplate(dataset);
+                                        $el.replaceWith($html);
+                                        if (action == "process") {
+                                            CHV.fn.import.process.deferred.success(XHR);
+                                        }
+                                    } else {
+                                        updateContinuous(response.import);
+                                    }
+                                } else {
+                                    PF.fn.growl.call(response.error.message);
+                                }
+                                
+                                $loading.addClass("hidden");
+                                $actions.removeClass("pointer-events-none");
+                            });
+                        });
+                    });
+                    
+				</script>
+			<?php
                 break;
 
             case 'images':
@@ -800,6 +1125,21 @@ function get_docs_link($key, $subject)
                                         echo CHV\Render\get_select_options_html([1 => _s('Enabled'), 0 => _s('Disabled')], CHV\Settings::get('guest_uploads')); ?>
 									</select></div>
 								<div class="input-below"><?php _se('Enable this if you want to allow non registered users to upload.'); ?></div>
+								<?php personal_mode_warning(); ?>
+							</div>
+                            <div class="input-label">
+								<label for="moderate_uploads"><?php _se('Moderate uploads'); ?></label>
+								<div class="c5 phablet-c1"><select type="text" name="moderate_uploads" id="moderate_uploads" class="text-input" <?php if (CHV\getSetting('website_mode') == 'personal') {
+                                            echo ' disabled';
+                                        } ?>>
+										<?php
+                                        echo CHV\Render\get_select_options_html([
+                                                '' => _s('Disabled'),
+                                                'guest' => _s('Guest'),
+                                                'all' => _s('All')
+                                            ], CHV\Settings::get('moderate_uploads')); ?>
+									</select></div>
+                                <div class="input-below"><?php _se('Enable this to moderate incoming uploads. Target content will require moderation for approval.'); ?></div>
 								<?php personal_mode_warning(); ?>
 							</div>
 
@@ -1979,6 +2319,97 @@ function get_docs_link($key, $subject)
 				<div class="input-below input-warning red-warning"><?php echo get_input_errors()['route_album']; ?></div>
 				<div class="input-below"><?php _se('Routing for %s', G\get_base_url('album/&lt;id&gt;')); ?></div>
 			</div>
+			<hr class="line-separator">
+			<div class="c24 phablet-c1 highlight text-content padding-10 margin-bottom-0">
+				<h3 class="margin-top-10 margin-bottom-10 font-weight-bold">Subdomain wildcards</h3>
+				<p>Both language and username subdomains are highly experimental features that require advanced server configurations. The alleged functionalities should be enabled only after setting up a subdomain wildcard pointing to your Chevereto installation. You also need to enable CORS for these subdomains. If you want to use HTTPS, you also need to bind the SSL certificate(s) for your subdomains.</p>
+				<p><b>Don't ask us how to make this work for your installation.</b> These are experimental features, and we don't have any guidance on how to fulfill the server requirements listed above as we are still collecting feedback from pro users. We will publish instructions (if any) in the future.</p>
+			</div>
+			<div class="input-label">
+				<label for="hostname"><?php _se('Hostname'); ?></label>
+				<div class="c9 phablet-c1">
+					<input type="text" name="hostname" id="hostname" class="text-input" value="<?php echo CHV\Settings::get('hostname', true); ?>" pattern="^(?!:\/\/)([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11}?$" placeholder="<?php echo G\get_domain(G_HTTP_HOST); ?>">
+				</div>
+				<div class="input-below input-warning red-warning"><?php echo get_input_errors()['hostname']; ?></div>
+				<div class="input-below"><?php _se('Hostname on which sub-domain wildcards will be added.'); ?> <?php _se('This setting may be overridden by %s.', '<code>app/settings.php</code>'); ?></div>
+			</div>
+			<div class="input-label">
+				<label for="lang_subdomain_wildcard"><?php _se('Language subdomains'); ?></label>
+				<div class="c5 phablet-c1"><select type="text" name="lang_subdomain_wildcard" id="lang_subdomain_wildcard" class="text-input">
+					<?php
+                            echo CHV\Render\get_select_options_html([1 => _s('Enabled'), 0 => _s('Disabled')], CHV\Settings::get('lang_subdomain_wildcard')); ?>
+				</select></div>
+				<div class="input-below"><?php _se('Enable to use %s for %t.', ['%t' => _s('languages'), '%s' => G\str_replace_first(CHV_HTTP_HOST, 'es' . '.' . CHV_HTTP_HOST, CHV_ROOT_URL)]); ?></div>
+			</div>
+			<div class="input-label">
+				<label for="user_subdomain_wildcard"><?php _se('Username subdomains'); ?></label>
+				<div class="c5 phablet-c1"><select type="text" name="user_subdomain_wildcard" id="user_subdomain_wildcard" class="text-input">
+					<?php
+                            echo CHV\Render\get_select_options_html([1 => _s('Enabled'), 0 => _s('Disabled')], CHV\Settings::get('user_subdomain_wildcard')); ?>
+				</select></div>
+				<div class="input-below"><?php _se('Enable to use %s for %t.', ['%t' => _s('user profiles'), '%s' => G\str_replace_first(CHV_HTTP_HOST, 'username' . '.' . CHV_HTTP_HOST, CHV_ROOT_URL)]); ?></div>
+			</div>
+			<?php
+                        } ?>
+
+			<?php if (get_settings()['key'] == 'languages') {
+                            ?>
+            <p><?php echo read_the_docs_settings('languages', _s('languages')); ?></p>
+            <div class="input-label">
+				<label><?php _se('Custom language strings'); ?></label>
+			</div>
+			<div class="input-label">
+				<label for="default_language"><?php _se('Default language'); ?></label>
+				<div class="c5 phablet-c1"><select type="text" name="default_language" id="default_language" class="text-input">
+					<?php
+                            foreach (CHV\get_available_languages() as $k => $v) {
+                                $selected_lang = $k == CHV\Settings::get('default_language') ? ' selected' : '';
+                                echo '<option value="' . $k . '"' . $selected_lang . '>' . $v['name'] . '</option>' . "\n";
+                            } ?>
+				</select></div>
+				<div class="input-below"><?php _se('Default base language to use.'); ?></div>
+			</div>
+
+			<div class="input-label">
+				<label for="auto_language"><?php _se('Auto language'); ?></label>
+				<div class="c5 phablet-c1"><select type="text" name="auto_language" id="auto_language" class="text-input">
+					<?php
+                            echo CHV\Render\get_select_options_html([1 => _s('Enabled'), 0 => _s('Disabled')], CHV\Settings::get('auto_language')); ?>
+				</select></div>
+				<div class="input-below"><?php _se('Enable this if you want to automatically detect and set the right language for each user.'); ?></div>
+			</div>
+
+			<div class="input-label">
+				<label for="language_chooser_enable"><?php _se('Language chooser'); ?></label>
+				<div class="c5 phablet-c1"><select type="text" name="language_chooser_enable" id="language_chooser_enable" class="text-input" data-combo="language-enable-combo">
+					<?php
+                            echo CHV\Render\get_select_options_html([1 => _s('Enabled'), 0 => _s('Disabled')], CHV\Settings::get('language_chooser_enable')); ?>
+				</select></div>
+				<div class="input-below"><?php _se('Enable this if you want to allow language selection.'); ?></div>
+			</div>
+
+			<?php if (count(CHV\get_available_languages()) > 0) {
+                                ?>
+			<div id="language-enable-combo">
+				<div data-combo-value="1" class="switch-combo<?php if ((get_safe_post() ? get_safe_post()['language_chooser_enable'] == 0 : !CHV\Settings::get('language_chooser_enable'))) {
+                                    echo ' soft-hidden';
+                                } ?>">
+					<div class="checkbox-label">
+						<h4 class="input-label-label"><?php _se('Enabled languages'); ?></h4>
+						<ul class="c20 phablet-c1">
+							<?php
+                                foreach (CHV\get_available_languages() as $k => $v) {
+                                    $lang_flag = array_key_exists($k, CHV\get_enabled_languages()) ? ' checked' : null;
+                                    echo '<li class="c5 phone-c1 display-inline-block"><label class="display-block" for="languages_enable[' . $k . ']"> <input type="checkbox" name="languages_enable[]" id="languages_enable[' . $k . ']" value="' . $k . '"' . $lang_flag . '>' . $v['name'] . '</label></li>';
+                                } ?>
+						</ul>
+						<p class="margin-top-20"><?php _se("Unchecked languages won't be used in your website."); ?></p>
+					</div>
+				</div>
+			</div>
+			<?php
+                            } ?>
+
 			<?php
                         } ?>
 			<?php if (get_settings()['key'] == 'email') {
@@ -2266,6 +2697,45 @@ function get_docs_link($key, $subject)
                 </div>
             </div>
             <hr class="line-separator"></hr>
+            <div class="input-label">
+                <label for="moderatecontent">ModerateContent</label>
+                <div class="c5 phablet-c1"><select type="text" name="moderatecontent" id="moderatecontent" class="text-input" data-combo="moderatecontent-combo">
+                    <?php
+                        echo CHV\Render\get_select_options_html([1 => _s('Enabled'), 0 => _s('Disabled')], get_safe_post() ? get_safe_post()['moderatecontent'] : CHV\Settings::get('moderatecontent')); ?>
+                </select></div>
+                <div class="input-below"><?php _se('Automatically moderate the content using the %s service.', '<a href="https://www.moderatecontent.com/" target="_blank">ModerateContent</a>'); ?></div>
+            </div>
+            <div id="moderatecontent-combo" class="c12 phablet-c1">
+                <div data-combo-value="1" class="switch-combo<?php if ((get_safe_post() ? get_safe_post()['moderatecontent'] : CHV\Settings::get('moderatecontent')) == 0) {
+                            echo ' soft-hidden';
+                        } ?>">
+                    <div class="input-label">
+                        <label for="moderatecontent_key">ModerateContent API Key</label>
+                        <input type="text" name="moderatecontent_key" id="moderatecontent_key" class="text-input" value="<?php echo get_safe_post() ? get_safe_post()['moderatecontent_key'] : CHV\Settings::get('moderatecontent_key'); ?>" placeholder="">
+                        <div class="input-below input-warning red-warning"><?php echo get_input_errors()['moderatecontent_key']; ?></div>
+                    </div>
+                    <div class="input-label">
+                        <label for="moderatecontent_auto_approve"><?php _se('Automatic approve'); ?></label>
+                        <div class="c5 phablet-c1"><select type="text" name="moderatecontent_auto_approve" id="moderatecontent_auto_approve" class="text-input">
+                        <?php echo CHV\Render\get_select_options_html([0 => _s('Disabled'), 1 => _s('Enabled')], get_safe_post() ? get_safe_post()['moderatecontent_auto_approve'] : CHV\Settings::get('moderatecontent_auto_approve')); ?>
+                        </select></div>
+                        <div class="input-below"><?php _se('Enable this to automatically approve content moderated by this service.'); ?></div>
+                    </div>
+                    <div class="input-label">
+                        <label for="moderatecontent_block_rating"><?php _se('Block content'); ?></label>
+                        <div class="c5 phablet-c1"><select type="text" name="moderatecontent_block_rating" id="moderatecontent_block_rating" class="text-input">
+                        <?php echo CHV\Render\get_select_options_html(['' => _s('Disabled'), 'a' => _s('Adult'), 't' => _s('Teen and adult')], get_safe_post() ? get_safe_post()['moderatecontent_block_rating'] : CHV\Settings::get('moderatecontent_block_rating')); ?>
+                        </select></div>
+                    </div>
+                    <div class="input-label">
+                        <label for="moderatecontent_flag_nsfw"><?php _se('Flag NSFW'); ?></label>
+                        <div class="c5 phablet-c1"><select type="text" name="moderatecontent_flag_nsfw" id="moderatecontent_flag_nsfw" class="text-input">
+                        <?php echo CHV\Render\get_select_options_html([0 => _s('Disabled'), 'a' => _s('Adult'), 't' => _s('Teen and adult')], get_safe_post() ? get_safe_post()['moderatecontent_flag_nsfw'] : CHV\Settings::get('moderatecontent_flag_nsfw')); ?>
+                        </select></div>
+                    </div>                    
+                </div>
+            </div>
+            <hr class="line-separator">
             <div class="input-label">
                 <label for="analytics_code"><?php _se('Analytics code'); ?></label>
                 <div class="c12 phablet-c1"><textarea type="text" name="analytics_code" id="analytics_code" class="text-input r4" value="" placeholder="<?php _se('Google Analytics or anything you want. It will be added to the theme footer.'); ?>"><?php echo CHV\Settings::get('analytics_code', true); ?></textarea></div>

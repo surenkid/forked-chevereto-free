@@ -46,6 +46,7 @@ $route = function ($handler) {
             'albums'    => _s('Albums'),
             'users'        => _s('Users'),
             'settings'    => _s('Settings'),
+            'bulk'    => _s('Bulk importer'),
         ];
 
         $default_route = 'stats';
@@ -112,12 +113,6 @@ $route = function ($handler) {
                 }
 
                 $db = CHV\DB::getInstance();
-                
-                $chevereto_news = unserialize(CHV\Settings::get('chevereto_news'));
-                if(!is_array($chevereto_news) || $chevereto_news === []) {
-                    $chevereto_news = CHV\updateCheveretoNews();
-                }
-                $handler::setVar('chevereto_news', $chevereto_news);
 
                 $chv_version = [
                     'files'    => G\get_app_version(),
@@ -227,6 +222,8 @@ $route = function ($handler) {
                     'homepage'                => _s('Homepage'),
                     'system'                => _s('System'),
                     'routing'                => _s('Routing'),
+                    'languages'                => _s('Languages'),
+                    'external-storage'        => _s('External storage'),
                     'email'                    => _s('Email'),
                     'external-services'        => _s('External services'),
                     'ip-bans'                => _s('IP bans'),
@@ -444,6 +441,11 @@ $route = function ($handler) {
                         [
                             'validate'    => $_POST['website_name'] ? true : false,
                             'error_msg'    => _s('Invalid website name')
+                        ],
+                        'default_language'    =>
+                        [
+                            'validate'    => CHV\get_available_languages()[$_POST['default_language']] ? true : false,
+                            'error_msg'    => _s('Invalid language')
                         ],
                         'default_timezone'    =>
                         [
@@ -778,6 +780,33 @@ $route = function ($handler) {
                         $_POST['upload_enabled_image_formats'] = implode(',', $image_format_enable);
                     }
 
+                    // Handle disabled languages
+                    if ($_POST['languages_enable'] && is_array($_POST['languages_enable'])) {
+
+                        // Push default language
+                        if (!in_array($_POST['default_language'], $_POST['languages_enable'])) {
+                            $_POST['languages_enable'][] = $_POST['default_language'];
+                        }
+
+                        $enabled_languages = [];
+                        $disabled_languages = CHV\get_available_languages();
+                        $_POST['languages_disable'] = [];
+                        foreach ($_POST['languages_enable'] as $k) {
+                            if (!array_key_exists($k, CHV\get_available_languages())) {
+                                continue;
+                            }
+                            $enabled_languages[$k] = CHV\get_available_languages()[$k];
+                            unset($disabled_languages[$k]);
+                        }
+                        CHV\l10n::setStatic('disabled_languages', $disabled_languages);
+                        CHV\l10n::setStatic('enabled_languages', $enabled_languages);
+                        unset($_POST['languages_enable']);
+                        foreach ($disabled_languages as $k => $v) {
+                            $_POST['languages_disable'][] = $k;
+                        }
+                        $_POST['languages_disable'] = implode(',', $_POST['languages_disable']);
+                    }
+
                     // Handle personal mode change
                     if ($_POST['website_mode'] == 'personal' and $_POST['website_mode_personal_routing']) {
                         if ($logged_user['id'] == $_POST['website_mode_personal_uid']) {
@@ -808,6 +837,22 @@ $route = function ($handler) {
                                     'error_msg' => $e->getMessage()
                                 ];
                             }
+                        }
+                    }
+
+                    if ($_POST['moderatecontent'] == 1) {
+                        $moderateContentKey = CHV\getSetting('moderatecontent_key');
+                        if ($_POST['moderatecontent_key']) {
+                            $moderateContentKey = $_POST['moderatecontent_key'];
+                        }
+                        $sample = 'http://www.moderatecontent.com/img/sample_face_2.jpg';
+                        $json = G\fetch_url('https://api.moderatecontent.com/moderate/?key='.$moderateContentKey.'&url=' . $sample);
+                        $data = json_decode($json);
+                        if (isset($data->error)) {
+                            $validations['moderatecontent_key'] = [
+                                'validate'    => false,
+                                'error_msg' => $data->error
+                            ];
                         }
                     }
 

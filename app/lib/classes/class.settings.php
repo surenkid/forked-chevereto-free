@@ -171,8 +171,6 @@ class Settings
                 'moderatecontent_block_rating' => 'a',
                 'moderatecontent_flag_nsfw' => 'a',
                 'moderate_uploads' => '', // ,
-                // 3.20.13
-                'chevereto_news' => 'a:0:{}',
             ];
 
             $device_to_columns = [
@@ -290,8 +288,15 @@ class Settings
             if ($settings['homepage_cta_fn'] == 'cta-link' and !G\is_url($settings['homepage_cta_fn_extra'])) {
                 $settings['homepage_cta_fn_extra'] = G\get_regex_match($settings['routing_regex_path'], '#', $settings['homepage_cta_fn_extra'], 1);
             }
-            
-            $settings['languages_disable'] = [];
+
+            // Disabled languages handle
+            if (!is_null($settings['languages_disable'])) {
+                $languages_disable = (array) explode(',', $settings['languages_disable']);
+                $languages_disable = array_filter(array_unique($languages_disable));
+            } else {
+                $languages_disable = [];
+            }
+            $settings['languages_disable'] = $languages_disable;
 
             self::$settings = $settings;
             self::$defaults = $defaults;
