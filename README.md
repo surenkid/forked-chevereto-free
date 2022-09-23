@@ -18,7 +18,3 @@
 ## 📚 文档
 
 [chevereto-free.github.io](https://chevereto-free.github.io)
-
-## 📜 License
-
-Copyright [Rodolfo Berríos Arce](http://rodolfoberrios.com) - [AGPLv3](LICENSE).
